@@ -69,6 +69,10 @@ model AuthCode {
   createdAt    DateTime @default(now())
   expiresAt    DateTime
 
+  // PKCE
+  codeChallenge       String?
+  codeChallengeMethod String?
+
   // Se quiser, relacionar com User e OAuthClient
 }
 
@@ -85,8 +89,8 @@ model RefreshToken {
 
 model AuditLog {
   id          String   @id @default(uuid())
-  action      String   // Ex.: 'CREATE_USER', 'LOGIN'
-  userId      String?  // quem realizou
+  action      String
+  userId      String?
   description String?
   createdAt   DateTime @default(now())
 }

@@ -10,10 +10,8 @@ import {
     HttpStatus, 
     UnauthorizedException 
   } from '@nestjs/common';
-  import { OauthService } from './oauth.service';
+import { OauthService } from './oauth.service';
 import { OAuthRequestBodyDto } from './dto/oauth-request-body.dto';
-  
-  // Crie DTOs para request se preferir (por simplicidade, uso @Body() e @Query() diretos)
   
   @Controller('oauth')
   export class OauthController {
@@ -48,6 +46,12 @@ import { OAuthRequestBodyDto } from './dto/oauth-request-body.dto';
             body.client_secret,
             body.refresh_token,
           );
+        
+        case 'client_credentials':
+          return this.oauthService.clientCredentialsFlow(
+            body.client_id,
+            body.client_secret
+          );
   
         default:
           throw new UnauthorizedException('grant_type não suportado');
@@ -61,6 +65,8 @@ import { OAuthRequestBodyDto } from './dto/oauth-request-body.dto';
       @Query('client_id') clientId: string,
       @Query('redirect_uri') redirectUri: string,
       @Query('state') state: string,
+      @Query('code_challenge') codeChallenge: string,
+      @Query('code_challenge_method') codeChallengeMethod: string,
       @Res() res: any,
       @Req() req: any,
     ) {
@@ -83,7 +89,7 @@ import { OAuthRequestBodyDto } from './dto/oauth-request-body.dto';
       await this.oauthService.validateAuthorizeRequest(clientId, redirectUri);
   
       // Criar o code
-      const code = await this.oauthService.createAuthCode(userId, clientId, redirectUri);
+      const code = await this.oauthService.createAuthCode(userId, clientId, redirectUri, codeChallenge, codeChallengeMethod);
   
       // Redirecionar de volta para redirectUri com o code
       const redirectUrl = new URL(redirectUri);

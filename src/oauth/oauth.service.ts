@@ -6,6 +6,7 @@ import { AuditLogService } from 'src/audit-log/audit-log.service';
 import * as jwt from 'jsonwebtoken';
 import { randomBytes } from 'crypto';
 import { add } from 'date-fns';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class OauthService {
@@ -66,11 +67,17 @@ export class OauthService {
   // =======================
   // AUTHORIZATION CODE (simplificado)
   // =======================
-  async createAuthCode(userId: string, clientId: string, redirectUri: string): Promise<string> {
+  async createAuthCode(
+    userId: string, 
+    clientId: string, 
+    redirectUri: string,
+    codeChallenge?: string,
+    codeChallengeMethod?: string
+  ): Promise<string> {
     
     // gera code random
     const code = randomBytes(16).toString('hex');
-    const expiresAt = add(new Date(), { minutes: Number(this.AUTH_CODE_EXPIRES_MIN) || 10 });
+    const expiresAt = add(new Date(), { minutes: Number(this.AUTH_CODE_EXPIRES_MIN) || 5 });
 
     await this.prisma.authCode.create({
       data: {
@@ -79,6 +86,8 @@ export class OauthService {
         userId,
         clientId,
         expiresAt,
+        codeChallenge: codeChallenge ?? null,
+        codeChallengeMethod: codeChallengeMethod ?? null,
       },
     });
 
@@ -103,9 +112,10 @@ export class OauthService {
     clientId: string,
     clientSecret: string,
     code: string,
-    redirectUri: string
+    redirectUri: string,
+    codeVerifier?: string,
   ) {
-    // 1) Ver client
+    // 1) Ver client, grants, secret
     const client = await this.clientsService.findByClientId(clientId);
     if (!client || !client.grants.includes('authorization_code')) {
       throw new UnauthorizedException('Client não suporta authorization_code');
@@ -114,11 +124,29 @@ export class OauthService {
       throw new UnauthorizedException('Secret inválido');
     }
 
-    // 2) Buscar o code
+    // 2) Buscar authCode
     const authCode = await this.prisma.authCode.findUnique({ where: { code } });
     if (!authCode) {
       throw new UnauthorizedException('Código inexistente');
     }
+
+    // Checagem PKCE
+    // PKCE check
+    if (authCode.codeChallenge) {
+      // Se codeChallengeMethod = 'S256'
+      if (authCode.codeChallengeMethod === 'S256') {
+        const hashed = this.sha256base64url(codeVerifier);
+        if (hashed !== authCode.codeChallenge) {
+          throw new UnauthorizedException('PKCE verificação falhou');
+        }
+      } else {
+        // 'plain'
+        if (codeVerifier !== authCode.codeChallenge) {
+          throw new UnauthorizedException('PKCE verificação falhou');
+        }
+      }
+    }
+
     if (authCode.clientId !== client.id) {
       throw new UnauthorizedException('Código pertence a outro client');
     }
@@ -143,7 +171,7 @@ export class OauthService {
       token_type: 'Bearer',
       access_token: accessToken,
       refresh_token: refreshToken.token,
-      expires_in: 3600,
+      expires_in: Number(this.ACCESS_TOKEN_EXP),
     };
   }
 
@@ -184,9 +212,49 @@ export class OauthService {
       token_type: 'Bearer',
       access_token: accessToken,
       refresh_token: newRefreshToken.token,
-      expires_in: 3600,
+      expires_in: Number(this.ACCESS_TOKEN_EXP),
     };
   }
+
+  async clientCredentialsFlow(clientId: string, clientSecret: string) {
+    // 1) Validar se o client existe
+    const client = await this.clientsService.findByClientId(clientId);
+    if (!client) {
+      throw new UnauthorizedException('Client não encontrado ou inválido.');
+    }
+  
+    // 2) Verificar se o client suporta 'client_credentials' no campo grants
+    if (!client.grants.includes('client_credentials')) {
+      throw new UnauthorizedException(
+        'Este client não suporta o fluxo client_credentials.'
+      );
+    }
+  
+    // 3) Comparar o client_secret (se houver) 
+    // (seu schema permite null se for PKCE, mas aqui exige secret)
+    if (!client.clientSecret || client.clientSecret !== clientSecret) {
+      throw new UnauthorizedException('client_secret inválido.');
+    }
+  
+    // 4) Gerar o access_token (JWT)
+    // Não há "usuário" real neste fluxo, então definimos sub=clientId ou algo do tipo
+    const payload = {
+      sub: clientId,
+      type: 'client_credentials',
+    };
+  
+    // Exemplo: se você tiver em OauthService uma variável JWT_SECRET e tempo de expiração
+    const accessToken = jwt.sign(payload, this.JWT_SECRET, {
+      expiresIn: Number(this.ACCESS_TOKEN_EXP), // ou o valor que você quiser
+    });
+  
+    // 5) Retornar o objeto no padrão OAuth (pode acrescentar o scope se quiser)
+    return {
+      token_type: 'Bearer',
+      access_token: accessToken,
+      expires_in: Number(this.ACCESS_TOKEN_EXP),
+    };
+  }  
 
   // =======================
   // Funções Auxiliares
@@ -244,5 +312,19 @@ export class OauthService {
     });
 
     return refreshToken;
+  }
+
+  private sha256base64url(value: string): string {
+    const hash = crypto
+      .createHash('sha256')
+      .update(value)
+      .digest();
+    
+    // base64url encode
+    return hash
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
   }
 }
