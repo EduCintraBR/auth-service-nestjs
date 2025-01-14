@@ -12,11 +12,26 @@ import {
   } from '@nestjs/common';
 import { OauthService } from './oauth.service';
 import { OAuthRequestBodyDto } from './dto/oauth-request-body.dto';
+import { OAuthCreateClient } from './dto/oauth-create-client.dto';
+import { OAuthAccessTokenIntrospectDto } from './dto/oauth-access-token-introspect.dto';
   
   @Controller('oauth')
   export class OauthController {
     constructor(private readonly oauthService: OauthService) {}
-  
+    
+    // =============== /oauth/instrospect ===============
+    @Post('introspect')
+    @HttpCode(HttpStatus.OK)
+    async introspect(@Body() body: OAuthAccessTokenIntrospectDto) {
+      const token = body.access_token;
+      if (!token) {
+        return { active: false };
+      }
+      // Chama método no oauthService
+      return this.oauthService.introspectToken(token);
+    }
+
+
     // =============== /oauth/token ===============
     @Post('token')
     @HttpCode(HttpStatus.OK)
@@ -36,8 +51,9 @@ import { OAuthRequestBodyDto } from './dto/oauth-request-body.dto';
           return this.oauthService.authorizationCodeFlow(
             body.client_id,
             body.client_secret,
+            body.redirect_uri,
             body.code,
-            body.redirect_uri
+            body.code_verifier
           );
   
         case 'refresh_token':
@@ -70,19 +86,14 @@ import { OAuthRequestBodyDto } from './dto/oauth-request-body.dto';
       @Res() res: any,
       @Req() req: any,
     ) {
-      // Exemplo: GET /oauth/authorize?response_type=code&client_id=abc&redirect_uri=http://localhost:3000/callback&state=123
       if (responseType !== 'code') {
         throw new UnauthorizedException('response_type não suportado (use code)');
       }
-  
-      // Precisaria exibir uma tela de login ou, se o user já estiver logado, associar
-      // AQUI estamos simplificando, assumindo que o userId=... vem de um cookie ou algo do tipo
-      // Em um caso real, você teria uma UI de login e consent.
       
-      const userId = req.session?.userId || null; // Exemplo simplificado
+      const userId = req.session?.userId || null;
       if (!userId) {
         // Redirecionar para uma página de login, depois voltar
-        return res.redirect(`/login?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}`);
+        return res.redirect(`/login?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=${codeChallengeMethod}`);
       }
   
       // Validar request
@@ -99,6 +110,12 @@ import { OAuthRequestBodyDto } from './dto/oauth-request-body.dto';
       }
   
       return res.redirect(redirectUrl.toString());
+    }
+
+    // =============== /oauth/create-client ===============
+    @Post('create-client')
+    async createClient(@Body() data: OAuthCreateClient) {
+      return await this.oauthService.createClient(data);
     }
 }
   

@@ -3,10 +3,12 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as session from 'express-session';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   const config = new DocumentBuilder()
     .setTitle('OAuth2 Server')
@@ -21,7 +23,7 @@ async function bootstrap() {
 
   // Session Middleware
   app.use(
-    session({  // se estiver usando `import * as session`
+    session({
       secret: process.env.COOKIE_SECRET,
       resave: false,
       saveUninitialized: false,
@@ -32,6 +34,16 @@ async function bootstrap() {
       },
     }),
   );
+
+  app.setBaseViewsDir(join(__dirname, '..', 'views'));
+  app.setViewEngine('ejs');
+
+  app.enableCors({
+    // Aqui voce coloca as origins de acordo com seu projeto
+    origin: ['http://localhost:3000', 'http://localhost:3002'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true, // se precisar enviar cookies ou headers de autenticação
+  });
 
   await app.listen(process.env.PORT ?? 3000);
 }

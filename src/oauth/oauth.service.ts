@@ -7,6 +7,7 @@ import * as jwt from 'jsonwebtoken';
 import { randomBytes } from 'crypto';
 import { add } from 'date-fns';
 import * as crypto from 'crypto';
+import { OAuthCreateClient } from './dto/oauth-create-client.dto';
 
 @Injectable()
 export class OauthService {
@@ -21,6 +22,20 @@ export class OauthService {
     private readonly clientsService: ClientsService,
     private readonly auditLogService: AuditLogService,
   ) {}
+
+
+  // =======================
+  // CREATE CLIENT
+  // =======================
+  async createClient(data: OAuthCreateClient) {
+    const { clientId, clientSecret, redirectUris, grants } = data;
+    const result = await this.prisma.oAuthClient.create({
+      data: { clientId, clientSecret, redirectUris, grants },
+      select: { id: true, clientId: true, redirectUris: true }
+    })
+
+    return result;
+  }
 
   // =======================
   // PASSWORD GRANT
@@ -50,7 +65,7 @@ export class OauthService {
     }
 
     // 3) Gerar tokens
-    const accessToken = this.generateAccessToken(user.id);
+    const accessToken = this.generateAccessToken(user.id, client.clientId);
     const refreshToken = await this.generateRefreshToken(user.id, client.clientId);
 
     // Registrar log
@@ -111,8 +126,8 @@ export class OauthService {
   async authorizationCodeFlow(
     clientId: string,
     clientSecret: string,
-    code: string,
     redirectUri: string,
+    code?: string,
     codeVerifier?: string,
   ) {
     // 1) Ver client, grants, secret
@@ -147,7 +162,7 @@ export class OauthService {
       }
     }
 
-    if (authCode.clientId !== client.id) {
+    if (authCode.clientId !== client.clientId) {
       throw new UnauthorizedException('Código pertence a outro client');
     }
     if (redirectUri && authCode.redirectUri !== redirectUri) {
@@ -158,10 +173,11 @@ export class OauthService {
     }
 
     // 3) Apagar o code (pode ser single-use)
-    await this.prisma.authCode.delete({ where: { code } });
+    const exist = this.prisma.authCode.findFirst( { where: { code } } );
+    if (exist) await this.prisma.authCode.delete({ where: { code } });
 
     // 4) Gerar tokens
-    const accessToken = this.generateAccessToken(authCode.userId);
+    const accessToken = await this.generateAccessToken(authCode.userId, client.clientId);
     const refreshToken = await this.generateRefreshToken(authCode.userId, client.clientId);
 
     // Log
@@ -171,7 +187,7 @@ export class OauthService {
       token_type: 'Bearer',
       access_token: accessToken,
       refresh_token: refreshToken.token,
-      expires_in: Number(this.ACCESS_TOKEN_EXP),
+      expires_in: this.ACCESS_TOKEN_EXP,
     };
   }
 
@@ -201,7 +217,7 @@ export class OauthService {
     }
 
     // Buscar user e gera novo access token
-    const accessToken = this.generateAccessToken(refreshToken.userId);
+    const accessToken = this.generateAccessToken(refreshToken.userId, client.clientId);
     // Gerar um novo refresh token
     const newRefreshToken = await this.generateRefreshToken(refreshToken.userId, client.clientId);
 
@@ -216,6 +232,9 @@ export class OauthService {
     };
   }
 
+  // =======================
+  // CLIENT CREDENTIALS
+  // =======================
   async clientCredentialsFlow(clientId: string, clientSecret: string) {
     // 1) Validar se o client existe
     const client = await this.clientsService.findByClientId(clientId);
@@ -245,21 +264,46 @@ export class OauthService {
   
     // Exemplo: se você tiver em OauthService uma variável JWT_SECRET e tempo de expiração
     const accessToken = jwt.sign(payload, this.JWT_SECRET, {
-      expiresIn: Number(this.ACCESS_TOKEN_EXP), // ou o valor que você quiser
+      expiresIn: this.ACCESS_TOKEN_EXP, // ou o valor que você quiser
     });
+
+    // Log
+    await this.auditLogService.logAction('CLIENT_CREDENTIALS', clientId);
   
     // 5) Retornar o objeto no padrão OAuth (pode acrescentar o scope se quiser)
     return {
       token_type: 'Bearer',
       access_token: accessToken,
-      expires_in: Number(this.ACCESS_TOKEN_EXP),
+      expires_in: this.ACCESS_TOKEN_EXP,
     };
-  }  
+  }
+
+  // =======================
+  // VALIDATE TOKEN - INTROSPECT
+  // =======================
+  async introspectToken(token: string) {
+    try {
+      // Verificar a assinatura e decodificar o payload
+      const payload = jwt.verify(token, this.JWT_SECRET) as any;
+
+      // Montando a resposta conforme o RFC 7662
+      return {
+        active: true,
+        client_id: payload.clientId,
+        sub: payload.sub,
+        exp: payload.exp,
+        iat: payload.iat,
+        claims: payload.claims,
+      };
+    } catch (err) {
+      return { active: false };
+    }
+  }
 
   // =======================
   // Funções Auxiliares
   // =======================
-  private async generateAccessToken(userId: string) {
+  private async generateAccessToken(userId: string, clientId: string) {
     
     const user = await this.prisma.user.findUnique({
         where: { id: userId },
@@ -290,6 +334,7 @@ export class OauthService {
     const payload = {
         id: user.id,
         email: user.email,
+        clientId,
         roles,
         claims
     };

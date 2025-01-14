@@ -14,6 +14,7 @@ export class OAuthRequestBodyDto {
         description: 'O nome de usuário. E-mail ou não.'
     })
     @IsString()
+    @IsOptional()
     username: string;
 
     @ApiProperty({
@@ -25,6 +26,7 @@ export class OAuthRequestBodyDto {
         minSymbols: 1,
         minNumbers: 2
     })
+    @IsOptional()
     password: string;
 
     @ApiProperty({
@@ -32,6 +34,7 @@ export class OAuthRequestBodyDto {
         description: 'O id do client que esta fazendo a requisição.'
     })
     @IsString()
+    @IsOptional()
     client_id: string;
 
     @ApiProperty({
@@ -39,6 +42,7 @@ export class OAuthRequestBodyDto {
         description: 'O secret do client que esta fazendo a requisição.'
     })
     @IsString()
+    @IsOptional()
     client_secret: string;
 
 
@@ -46,11 +50,16 @@ export class OAuthRequestBodyDto {
     @IsOptional()
     code?: string;
 
+    @IsString()
+    @IsOptional()
+    code_verifier?: string;
+
     @ApiProperty({
         example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
         description: 'O refresh token da requisição.'
     })
     @IsString()
+    @IsOptional()
     refresh_token: string;
 
     @IsString()

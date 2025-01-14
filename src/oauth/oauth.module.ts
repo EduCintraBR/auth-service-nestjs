@@ -8,11 +8,12 @@ import { AuditLogModule } from '../audit-log/audit-log.module';
 import { UsersService } from '../users/users.service';
 import { ClientsService } from '../clients/clients.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { LoginController } from './login.controller';
 
 @Module({
   imports: [PrismaModule, UsersModule, ClientsModule, AuditLogModule],
   providers: [OauthService, UsersService, ClientsService, AuditLogService],
-  controllers: [OauthController]
+  controllers: [OauthController, LoginController]
 })
 
 export class OauthModule {}
