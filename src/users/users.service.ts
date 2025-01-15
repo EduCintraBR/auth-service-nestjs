@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 
@@ -9,7 +13,7 @@ export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
   // Cria um novo usuário (por exemplo, se você quiser registrar pela sua aplicação)
-  async createUser(email: string, plainPassword: string) {
+  async createUser(name: string, email: string, plainPassword: string) {
     // Verificar se email já existe
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -24,11 +28,11 @@ export class UsersService {
         email,
         passwordHash,
       },
-      select: { 
-            id: true, 
-            email: true, 
-            passwordHash: true 
-        }
+      select: {
+        id: true,
+        email: true,
+        passwordHash: true,
+      },
     });
 
     return user;
@@ -36,9 +40,9 @@ export class UsersService {
 
   async findAll(onlyActive?: boolean) {
     if (onlyActive ?? true) {
-        return await this.prisma.user.findMany({
-            where: { isActive: onlyActive }
-        });
+      return await this.prisma.user.findMany({
+        where: { isActive: onlyActive },
+      });
     }
 
     return this.prisma.user.findMany();
@@ -53,7 +57,7 @@ export class UsersService {
   // Busca usuário pelo email
   async findByEmail(email: string) {
     const user = await this.prisma.user.findUnique({ where: { email } });
-    return user; 
+    return user;
   }
 
   // Atualiza a senha do usuário

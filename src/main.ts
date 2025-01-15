@@ -6,7 +6,6 @@ import * as session from 'express-session';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 
-
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
@@ -19,7 +18,13 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
 
   // Session Middleware
   app.use(
@@ -42,7 +47,7 @@ async function bootstrap() {
     // Aqui voce coloca as origins de acordo com seu projeto
     origin: ['http://localhost:3000', 'http://localhost:3002'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    credentials: true, // se precisar enviar cookies ou headers de autenticação
+    credentials: true,
   });
 
   await app.listen(process.env.PORT ?? 3000);

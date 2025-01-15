@@ -11,7 +11,7 @@
         margin: 0;
         padding: 0;
         background-color: #f0f2f5;
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       }
       .container {
         width: 300px;
@@ -30,26 +30,26 @@
         margin-top: 10px;
         font-weight: 500;
       }
-      input[type="text"],
-      input[type="password"] {
+      input[type='text'],
+      input[type='password'] {
         width: 100%;
         padding: 8px;
         margin-top: 5px;
         border: 1px solid #ccc;
         border-radius: 3px;
       }
-      button[type="submit"] {
+      button[type='submit'] {
         margin-top: 20px;
         width: 100%;
         padding: 10px;
-        background: #007BFF;
+        background: #007bff;
         color: #fff;
         border: none;
         border-radius: 3px;
         font-weight: 600;
         cursor: pointer;
       }
-      button[type="submit"]:hover {
+      button[type='submit']:hover {
         background: #0056b3;
       }
       .info {
@@ -75,18 +75,21 @@
         <input type="password" name="password" id="password" required />
 
         <!-- Esses campos escondidos permitem passar as infos do /oauth/authorize para /login -->
-        <input type="hidden" name="client_id" value="<%= client_id %>">
-        <input type="hidden" name="redirect_uri" value="<%= redirect_uri %>">
-        <input type="hidden" name="state" value="<%= state %>">
-        <input type="hidden" name="code_challenge" value="<%= code_challenge %>">
-        <input type="hidden" name="code_challenge_method" value="<%= code_challenge_method %>">
+        <input type="hidden" name="client_id" value="<%= client_id %>" />
+        <input type="hidden" name="redirect_uri" value="<%= redirect_uri %>" />
+        <input type="hidden" name="state" value="<%= state %>" />
+        <input
+          type="hidden"
+          name="code_challenge"
+          value="<%= code_challenge %>"
+        />
+        <input
+          type="hidden"
+          name="code_challenge_method"
+          value="<%= code_challenge_method %>"
+        />
 
         <button type="submit">Entrar</button>
-
-        <div class="info">
-          <p>Ao entrar, você será redirecionado para a aplicação:</p>
-          <p><code><%= redirect_uri %></code></p>
-        </div>
       </form>
     </div>
   </body>
