@@ -8,29 +8,29 @@ generator client {
 }
 
 model User {
-  id           String      @id @default(uuid())
-  email        String      @unique
+  id           String   @id @default(uuid())
+  email        String   @unique
   passwordHash String
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  isActive     Boolean     @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  isActive     Boolean  @default(true)
 
   // Relações
-  roles   UserRole[]
-  claims  UserClaim[]
+  roles         UserRole[]
+  claims        UserClaim[]
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
 }
 
 model Role {
-  id   String   @id @default(uuid())
-  name String   @unique
-  // Ex.: 'ADMIN', 'USER' ...
+  id    String     @id @default(uuid())
+  name  String     @unique
   users UserRole[]
 }
 
 model UserRole {
-  // Tabela de ligação N:N
-  userId String
-  roleId String
+  userId     String
+  roleId     String
   assignedAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
@@ -40,51 +40,53 @@ model UserRole {
 }
 
 model UserClaim {
-  id     String   @id @default(uuid())
+  id     String @id @default(uuid())
   userId String
   name   String
   value  String
 
-  user   User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 }
 
 model OAuthClient {
-  id             String   @id @default(uuid())
-  clientId       String   @unique
-  clientSecret   String?  // pode ser nulo se for PKCE
-  redirectUris   String[] // array com URIs
-  grants         String[] // array com quais grant_types suportados p/ esse client
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id           String   @id @default(uuid())
+  clientId     String   @unique
+  clientSecret String? // pode ser nulo se for PKCE
+  redirectUris String[] // array com URIs
+  grants       String[] // array com quais grant_types suportados p/ esse client | Ex.: 'password', 'authorization_code', 'refresh_token' ...
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  // Ex.: 'password', 'authorization_code', 'refresh_token' ...
+  authCodes     AuthCode[]
+  refreshTokens RefreshToken[]
 }
 
 model AuthCode {
-  id           String   @id @default(uuid())
-  code         String   @unique
-  redirectUri  String?
-  userId       String
-  clientId     String
-  createdAt    DateTime @default(now())
-  expiresAt    DateTime
+  id          String   @id @default(uuid())
+  code        String   @unique
+  redirectUri String?
+  userId      String
+  clientId    String
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
 
   // PKCE
   codeChallenge       String?
   codeChallengeMethod String?
 
-  // Se quiser, relacionar com User e OAuthClient
+  client OAuthClient @relation(fields: [clientId], references: [clientId])
 }
 
 model RefreshToken {
-  id         String   @id @default(uuid())
-  token      String   @unique
-  userId     String
-  clientId   String
-  createdAt  DateTime @default(now())
-  expiresAt  DateTime
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  clientId  String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
 
-  // Relacionamentos
+  client OAuthClient @relation(fields: [clientId], references: [clientId])
+  user   User        @relation(fields: [userId], references: [id])
 }
 
 model AuditLog {
@@ -93,5 +95,6 @@ model AuditLog {
   userId      String?
   description String?
   createdAt   DateTime @default(now())
-}
 
+  user User? @relation(fields: [userId], references: [id])
+}
