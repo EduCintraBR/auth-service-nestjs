@@ -338,6 +338,8 @@ export class OauthService {
     }
   }
 
+  async invalidateRefreshToken(userId: string) {}
+
   // =======================
   // Funções Auxiliares
   // =======================

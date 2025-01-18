@@ -67,7 +67,7 @@
   <body>
     <div class="container">
       <h1>Login</h1>
-      <form action="/login" method="POST">
+      <form action="/auth/login" method="POST">
         <label for="email">Email:</label>
         <input type="text" name="email" id="email" required />
 
@@ -90,6 +90,9 @@
         />
 
         <button type="submit">Entrar</button>
+        <% if (errorMessage) { %>
+          <div style="color: red; padding: 10px;" ="error-message"><%= errorMessage %></div>
+        <% } %>
       </form>
     </div>
   </body>

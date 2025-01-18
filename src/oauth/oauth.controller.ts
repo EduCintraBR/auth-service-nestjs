@@ -93,7 +93,7 @@ export class OauthController {
     if (!userId) {
       // Redirecionar para uma página de login, depois voltar
       return res.redirect(
-        `/login?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=${codeChallengeMethod}`,
+        `/auth/login?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=${codeChallengeMethod}`,
       );
     }
 
